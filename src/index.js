@@ -39,6 +39,7 @@ await bot.api.setMyCommands([
   { command: 'connect', description: 'Connect your Binance account' },
   { command: 'balance', description: 'Show your Binance balances' },
   { command: 'myid', description: 'Show your Binance ID' },
+  { command: 'ip', description: 'IP to whitelist on your Binance API key' },
   { command: 'travelinfo', description: 'Travel Rule details so others can tip you' },
   { command: 'history', description: 'Your recent tips and withdrawals' },
   { command: 'disconnect', description: 'Disconnect your Binance account' },

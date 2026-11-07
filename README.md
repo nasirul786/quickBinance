@@ -42,6 +42,7 @@ Built with [grammY](https://grammy.dev), Node.js and SQLite.
 | `/disconnect` | anywhere | Unlink and delete the stored keys (asks for confirmation) |
 | `/balance` | anywhere | Value of each wallet and the coins in it. Hidden behind a spoiler in groups |
 | `/myid` | anywhere | Show your Binance ID so others can tip you |
+| `/ip` | anywhere | The IP to whitelist on your API key: the server's, or the proxy's when `USE_PROXY=1`. Includes a copy button |
 | `/deposit <token>` | anywhere | Choose a network to get your deposit address |
 | `/bn <amount> <token> <note>` | reply | Tip the author of the message you reply to |
 | `/bn <amount> <token> <binance id> <note>` | anywhere | Tip by Binance ID (or `@username` of a connected user) |
@@ -75,7 +76,7 @@ Create the key in Binance → **API Management** → *Create API* → *System ge
 | Permission | Needed for |
 | --- | --- |
 | Enable Reading | Everything (receiving tips, `/deposit`, `/balance`) |
-| Enable Withdrawals + **Restrict access to trusted IPs only** | Sending tips and `/withdraw`. Binance blocks API withdrawals on unrestricted keys. Whitelist the bot server's IP, or the proxy's IP if `USE_PROXY=1`; the bot shows the IP to add. |
+| Enable Withdrawals + **Restrict access to trusted IPs only** | Sending tips and `/withdraw`. Binance blocks API withdrawals on unrestricted keys. Whitelist the bot server's IP, or the proxy's IP if `USE_PROXY=1`; `/ip` shows the IP to add, with a copy button. |
 | Permits Universal Transfer | Using Funding and Futures balances |
 | Enable Spot & Margin Trading | Using Flexible Earn balances and the Fast Withdraw Switch. The bot never places trades. |
 

@@ -2,6 +2,7 @@ import { add, cmp, isMultipleOf, normalize, sub } from './decimal.js';
 import { getSources, planSources, gatherToSpot } from './funding.js';
 import { proxiedFetch } from './proxy.js';
 import * as db from './db.js';
+import { config } from './config.js';
 
 // Shared by tips and /withdraw: network rules, fee options, permission check and the send itself.
 
@@ -71,6 +72,18 @@ export async function outboundIp() {
     cachedIp = null;
   }
   return cachedIp;
+}
+
+/** HTML explaining which IP to whitelist on a Binance API key, with where it comes from. */
+export async function whitelistText() {
+  const ip = await outboundIp();
+  const source = config.proxy ? "the bot's proxy" : "the bot's server";
+  if (!ip) return `🌐 Couldn't detect ${source}'s public IP right now. Please try /ip again in a moment.`;
+  return (
+    `🌐 <b>IP to whitelist:</b> <code>${ip}</code>\n<i>(${source} — Binance sees all of the bot's requests coming from it)</i>\n\n` +
+    'Binance → API Management → <b>Edit restrictions</b> → <b>Restrict access to trusted IPs only</b> → add this IP. ' +
+    'Binance only allows API withdrawals on keys restricted this way.'
+  );
 }
 
 /**

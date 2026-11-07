@@ -3,7 +3,7 @@ import * as db from '../db.js';
 import { createClient, friendlyError } from '../binance.js';
 import { escapeHtml, isPrivate, mention } from '../utils.js';
 import { getAllWallets } from '../wallets.js';
-import { checkWithdrawPermission, outboundIp } from '../transfer.js';
+import { checkWithdrawPermission, outboundIp, whitelistText } from '../transfer.js';
 import { showTravelInfo } from './travelinfo.js';
 
 const composer = new Composer();
@@ -20,6 +20,7 @@ const HELP = `<b>Quick Binance</b> — tip, send and receive crypto between Bina
 /disconnect — unlink your Binance account
 /balance — show all your wallet balances (in groups they are hidden behind a spoiler)
 /myid — show your Binance ID so others can tip you
+/ip — the IP to whitelist on your Binance API key
 /travelinfo — save your legal name &amp; country so users from Travel Rule regions (e.g. Binance India) can tip you
 
 <b>Receive</b>
@@ -93,12 +94,17 @@ async function startConnect(ctx, { replace = false } = {}) {
   db.markStartedBot(ctx.from.id);
 
   const user = db.getUser(ctx.from.id);
+  const ip = await outboundIp();
   if (db.isConnected(user) && !replace) {
-    const kb = new InlineKeyboard().add(btn(ctx, '🔄 Replace API keys', 'reconnect', 'primary')).add(btn(ctx, '🔌 Disconnect', 'disc', 'danger'));
+    const kb = copyIpKeyboard(ip)
+      .row()
+      .add(btn(ctx, '🔄 Replace API keys', 'reconnect', 'primary'))
+      .add(btn(ctx, '🔌 Disconnect', 'disc', 'danger'));
     const permission = await checkWithdrawPermission(createClient(db.getCredentials(user)), user.telegram_id);
     return ctx.reply(
       `✅ You're already connected.\nBinance ID: <code>${escapeHtml(user.binance_uid)}</code>\n` +
-        `Sending tips and withdrawals: ${permission.ok ? 'enabled' : `<b>disabled</b>\n\n${permission.message}`}`,
+        `Sending tips and withdrawals: ${permission.ok ? 'enabled' : `<b>disabled</b>\n\n${permission.message}`}` +
+        (ip ? `\n\n🌐 IP to whitelist on your API key: <code>${escapeHtml(ip)}</code>` : ''),
       { parse_mode: 'HTML', reply_markup: kb },
     );
   }
@@ -108,7 +114,7 @@ async function startConnect(ctx, { replace = false } = {}) {
     `<b>Connect your Binance account</b>
 
 1. Open Binance → Profile → <b>API Management</b> → Create API (System generated).
-2. Enable <b>Enable Reading</b>. To send tips or withdraw, also enable <b>Enable Withdrawals</b> and choose <b>Restrict access to trusted IPs only</b> with this IP: <code>${escapeHtml((await outboundIp()) || "your bot server's public IP")}</code>
+2. Enable <b>Enable Reading</b>. To send tips or withdraw, also enable <b>Enable Withdrawals</b> and choose <b>Restrict access to trusted IPs only</b> with this IP: <code>${escapeHtml(ip || "your bot server's public IP")}</code> (or send /ip any time)
 3. To let tips and withdrawals use money in your other wallets:
    • Funding / Futures → enable <b>Permits Universal Transfer</b>
    • Flexible Earn → enable <b>Enable Spot &amp; Margin Trading</b> (Binance requires it to redeem Earn; the bot never places trades)
@@ -116,9 +122,17 @@ async function startConnect(ctx, { replace = false } = {}) {
 
 Now send me your <b>API Key</b>. (Send /cancel to stop.)
 I'll delete your messages containing keys right after reading them, and keys are stored encrypted.`,
-    { parse_mode: 'HTML' },
+    { parse_mode: 'HTML', reply_markup: copyIpKeyboard(ip) },
   );
 }
+
+/** A keyboard with a "Copy IP" button when the IP is known (empty otherwise). */
+const copyIpKeyboard = (ip) => (ip ? new InlineKeyboard().copyText('📋 Copy IP', ip).primary() : new InlineKeyboard());
+
+composer.command(['ip', 'whitelist'], async (ctx) => {
+  const ip = await outboundIp();
+  await ctx.reply(await whitelistText(), { parse_mode: 'HTML', reply_markup: copyIpKeyboard(ip) });
+});
 
 composer.command('cancel', async (ctx) => {
   if (pendingConnect.delete(ctx.from.id)) return ctx.reply('Cancelled.');
@@ -272,7 +286,7 @@ composer.chatType('private').on('message:text', async (ctx, next) => {
       ctx.chat.id,
       status.message_id,
       `✅ Connected! Your Binance ID: <code>${escapeHtml(account.uid)}</code>${warn}${tradeWarn}`,
-      { parse_mode: 'HTML' },
+      { parse_mode: 'HTML', reply_markup: permission.ok ? undefined : copyIpKeyboard(await outboundIp()) },
     );
   } catch (err) {
     await ctx.api.editMessageText(
